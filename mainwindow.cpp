@@ -12,6 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionConnect, SIGNAL(triggered()), this, SLOT(slotConnect()));
     connect(ui->txtInput, SIGNAL(returnPressed()), this, SLOT(readInput()));
 
+    connect(ui->actionFonts, SIGNAL(triggered()), this, SLOT(loadFontsDialog()));
+
     socket = new QTcpSocket(this);
     connect(socket, SIGNAL(connected()),this, SLOT(connected()));
     connect(socket, SIGNAL(disconnected()),this, SLOT(disconnected()));
@@ -65,24 +67,25 @@ void MainWindow::setStatusBar()
 
 void MainWindow::doConnection()
 {
-    ui->txtOutput->appendPlainText("Connecting to Server...");
+    ui->txtOutput->append("Connecting to Server...");
     socket->connectToHost(sHostAddress, iHostPort);
     if(!socket->waitForConnected())
     {
-        ui->txtOutput->appendPlainText("Could not connect to server");
+        ui->txtOutput->append("Could not connect to server");
     }
 }
 
 void MainWindow::connected()
 {
-    ui->txtOutput->appendPlainText("Connected to Server");
+    QString sStatus = this->sHostAddress +" "+ QString::number(this->iHostPort);
+    ui->txtOutput->append("Connected to Server");
     isConnected = true;
-    this->setWindowTitle(this->sHostAddress +" "+ QString::number(this->iHostPort));
+    this->setWindowTitle(sStatus);
 }
 
 void MainWindow::disconnected()
 {
-    ui->txtOutput->appendPlainText("Disconnected to Server");
+    ui->txtOutput->append("Disconnected to Server");
     isConnected = false;
     this->setWindowTitle("Not Connected");
     statusLabel->clear();
@@ -95,10 +98,22 @@ void MainWindow::bytesWritten(qint64 bytes)
 
 void MainWindow::readyRead()
 {
-    qDebug() << "reading...";
+    qDebug() << "Reading from Socket...";
 
     // read the data from the socket
-    ui->txtOutput->appendPlainText(socket->readAll());
+    ui->txtOutput->append(socket->readAll());
+    QTextCursor c = ui->txtOutput->textCursor();
+    c.movePosition(QTextCursor::End);
+    ui->txtOutput->setTextCursor(c);
 }
 
-
+void MainWindow::loadFontsDialog()
+{
+    bool ok = true;
+    QFont font = QFontDialog::getFont(&ok, this);
+    if(!ok)
+    {
+        return;
+    }
+    ui->txtOutput->setFont(font);
+}

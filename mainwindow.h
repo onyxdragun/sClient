@@ -5,6 +5,9 @@
 #include <QLabel>
 #include <QTcpSocket>
 #include <QMessageBox>
+#include <QFontDialog>
+#include <QColorDialog>
+#include <QPalette>
 
 namespace Ui {
 class MainWindow;
@@ -34,6 +37,7 @@ private:
 public slots:
     void readInput();
     void slotConnect();
+    void loadFontsDialog();
     void connected();
     void disconnected();
     void bytesWritten(qint64 bytes);
