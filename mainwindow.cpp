@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionFonts, SIGNAL(triggered()), this, SLOT(loadFontsDialog()));
 
     socket = new QTcpSocket(this);
+    socket->setReadBufferSize(2048);
     connect(socket, SIGNAL(connected()),this, SLOT(connected()));
     connect(socket, SIGNAL(disconnected()),this, SLOT(disconnected()));
     connect(socket, SIGNAL(bytesWritten(qint64)),this, SLOT(bytesWritten(qint64)));
@@ -101,10 +102,13 @@ void MainWindow::readyRead()
     qDebug() << "Reading from Socket...";
 
     // read the data from the socket
-    ui->txtOutput->append(socket->readAll());
-    QTextCursor c = ui->txtOutput->textCursor();
-    c.movePosition(QTextCursor::End);
-    ui->txtOutput->setTextCursor(c);
+    while(socket->bytesAvailable())
+    {
+        qDebug() << "Length: " << socket->bytesAvailable();
+        //ui->txtOutput->append(socket->readAll());
+        data += socket->readAll();
+        emit displayText(data);
+    }
 }
 
 void MainWindow::loadFontsDialog()
@@ -116,4 +120,12 @@ void MainWindow::loadFontsDialog()
         return;
     }
     ui->txtOutput->setFont(font);
+}
+
+void MainWindow::displayText(QByteArray data)
+{
+    ui->txtOutput->append(data);
+    QTextCursor c = ui->txtOutput->textCursor();
+    c.movePosition(QTextCursor::End);
+    ui->txtOutput->setTextCursor(c);
 }

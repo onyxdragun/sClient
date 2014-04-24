@@ -32,6 +32,7 @@ private:
     QLabel *statusLabel;
     QTcpSocket *socket;
     bool isConnected;
+    QByteArray data;
 
 
 public slots:
@@ -42,6 +43,7 @@ public slots:
     void disconnected();
     void bytesWritten(qint64 bytes);
     void readyRead();
+    void displayText(QByteArray data);
 
 };
 
