@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "dlgconnect.h"
+#include "dlgaliases.h"
 
 #include "ui_mainwindow.h"
 
@@ -12,7 +13,11 @@ MainWindow::MainWindow(QWidget *parent) :
     iNumKeepAlives = 2;
     iInterval = 2;
     iHistoryPos = 0;
+
+    LoadSettings();
+
     connect(ui->actionConnect, SIGNAL(triggered()), this, SLOT(slotConnect()));
+    connect(ui->actionAliases, SIGNAL(triggered()), this, SLOT(slotAliases()));
     connect(ui->txtInput, SIGNAL(returnPressed()), this, SLOT(readInput()));
 
     connect(ui->actionFonts, SIGNAL(triggered()), this, SLOT(loadFontsDialog()));
@@ -53,17 +58,14 @@ void MainWindow::slotConnect()
     dConnect->show();
 }
 
-void MainWindow::readInput()
+void MainWindow::slotAliases()
 {
-    QString sInput = ui->txtInput->text();
-    /* Add command to the beginging of the history */
-    std::vector<QString>::iterator itHistory;
-    itHistory = vHistory.begin();
-    if (vHistory.size() >= HISTORY_MAX_SIZE) {
-        vHistory.pop_back();
-    }
-    vHistory.insert(itHistory, sInput);
+    dlgaliases *dAliases = new dlgaliases(this);
+    dAliases->show();
+}
 
+void MainWindow::ProcessInput(QString sInput)
+{
     if ( (sInput.indexOf(".") != -1) && (sInput.indexOf(".") == 0) && (sInput.length() > 1) )
     {
         if(ui->actionSpeedwalk->isChecked())
@@ -72,9 +74,14 @@ void MainWindow::readInput()
             doSpeedWalk(sInput);
         }
     }
+    else if ( (sInput.indexOf("aa ") != -1) && (sInput.indexOf("aa ") == 0) && (sInput.length() > 3) )
+    {
+        qDebug() << "Looking to add an alias";
+        addToAliases(sInput);
+    }
     else if (sInput.indexOf(";") != -1)
     {
-        qDebug() << "Potential command stacking requested";
+        doStackedCommands(sInput);
     }
     else
     {
@@ -83,6 +90,38 @@ void MainWindow::readInput()
             socket->write(sInput.toStdString().c_str());
             socket->write("\n");
         }
+    }
+}
+
+void MainWindow::readInput()
+{
+    QString sInput = ui->txtInput->text();
+    size_t found = 0;
+
+    /* Add command to the beginging of the history */
+    std::vector<QString>::iterator itHistory;
+    itHistory = vHistory.begin();
+    if (vHistory.size() >= HISTORY_MAX_SIZE) {
+        vHistory.pop_back();
+    }
+    vHistory.insert(itHistory, sInput);
+
+    found = sInput.toStdString().find(" ");
+    if (found == std::string::npos)
+    {
+        QMap<QString,QString>::const_iterator i = mAliases.find(sInput);
+        /* Check if it was an alias that was entered */
+        if (i != mAliases.end())
+        {
+            qDebug() << "Alias '" << i.key() << "' called";
+            ProcessInput(i.value());
+        }
+        else {
+            ProcessInput(sInput);
+        }
+    }
+    else {
+        ProcessInput(sInput);
     }
     ui->txtInput->clear();
 }
@@ -232,11 +271,133 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
     return QMainWindow::eventFilter(obj, event);
 }
 
-void MainWindow::showHistoryItem(int pos)
+void MainWindow::showHistoryItem(size_t pos)
 {
     if (pos >= 0 && pos < vHistory.size())
     {
         ui->txtInput->setText(vHistory[pos]);
         ui->txtInput->selectAll();
     }
+}
+
+void MainWindow::doStackedCommands(QString sInput)
+{
+    std::vector<std::string> vStackedCmds;
+    std::vector<std::string>::iterator vIt;
+    std::string delimiter = ";";
+    std::string str = sInput.toStdString();
+    std::string token;
+    size_t pos = 0;
+
+    if (!ui->actionCmdStacking->isChecked())
+    {
+        return;
+    }
+    if (!isConnected)
+    {
+        return;
+    }
+
+    qDebug() << "Stacking Commands: " << sInput;
+
+    /* We need to split the string which is ; delimited */
+    while ((pos = str.find(delimiter)) != std::string::npos)
+    {
+        token = str.substr(0, pos);
+        vStackedCmds.push_back(token);
+        str.erase(0, pos + delimiter.length());
+    }
+    /* need to tack on last portion of the string */
+    vStackedCmds.push_back(str);
+    for(vIt = vStackedCmds.begin(); vIt != vStackedCmds.end(); vIt++)
+    {
+        //qDebug() << "Stacked Command " << vIt->c_str();
+        socket->write((*vIt).c_str());
+        socket->write("\n");
+    }
+
+}
+
+bool MainWindow::addToAliases(QString input)
+{
+    bool b = true;
+    std::string cmd, first, second;
+    std::istringstream iss(input.toStdString());
+    QString alias, command;
+    iss >> cmd >> first;
+    getline(iss, second);
+
+    alias = QString(first.c_str());
+    command = QString(second.c_str());
+    qDebug() << "Command size: " << command.length();
+
+    if (command.compare("\n") && (command.length() == 0))
+    {
+        mAliases.remove(alias);
+        qDebug() << "Alias '" << alias << "' removed";
+    }
+    else
+    {
+        mAliases.insert(alias, command.trimmed());
+        qDebug() << "Alias '" << alias << "' added";
+    }
+
+    qDebug() << mAliases;
+
+    return b;
+}
+
+void MainWindow::SaveSettings()
+{
+    QSettings settings("DynamicShark", "sClient");
+    SaveAliases(&settings);
+}
+
+void MainWindow::LoadSettings()
+{
+    QSettings settings("DynamicShark", "sClient");
+    LoadAliases(&settings);
+}
+
+void MainWindow::SaveAliases(QSettings *settings)
+{
+    QMap<QString,QString>::iterator It = mAliases.begin();
+
+    qDebug() << "Saving Aliases [" << mAliases.size() << "]...";
+    if (mAliases.size() == 0)
+    {
+        settings->remove("Aliases");
+    }
+    else
+    {
+        settings->beginGroup("Aliases");
+        while (It != mAliases.end())
+        {
+            qDebug() << "Alias: " << It.key() << " " << It.value();
+            settings->setValue(It.key(), It.value());
+            ++It;
+        }
+        settings->endGroup();
+    }
+    qDebug() << "Finished saving Aliases";
+}
+
+void MainWindow::LoadAliases(QSettings *settings)
+{
+    settings->beginGroup("Aliases");
+    QStringList keys = settings->childKeys();
+
+    qDebug() << "Loading Aliases [" << keys.size() << "]...";
+    foreach(QString key, keys)
+    {
+        QString cmd = settings->value(key).toString();
+        mAliases.insert(key, cmd);
+    }
+    settings->endGroup();
+}
+
+void MainWindow::shuttingDown()
+{
+    qDebug() << "Shutting down...";
+    SaveSettings();
 }

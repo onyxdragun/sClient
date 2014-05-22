@@ -14,6 +14,8 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <QMap>
+#include <QSettings>
 
 #define HISTORY_MAX_SIZE 50
 
@@ -33,6 +35,7 @@ public:
     void setStatusBar();
     void doConnection();
     void doSpeedWalk(QString sWalk);
+    void doStackedCommands(QString sInput);
     
 private:
     Ui::MainWindow *ui;
@@ -48,19 +51,29 @@ private:
     bool isConnected;
     QByteArray data;
     std::vector<QString> vHistory;
-    int iHistoryPos;
-    void showHistoryItem(int);
+    size_t iHistoryPos;
+    void showHistoryItem(size_t);
+    QMap<QString,QString> mAliases;
+    bool addToAliases(QString);
+
+    void SaveSettings();
+    void LoadSettings();
+    void LoadAliases(QSettings*);
+    void SaveAliases(QSettings*);
+    void ProcessInput(QString);
 
 
 public slots:
     void readInput();
     void slotConnect();
+    void slotAliases();
     void loadFontsDialog();
     void connected();
     void disconnected();
     void bytesWritten(qint64 bytes);
     void readyRead();
     void displayText(QByteArray data);
+    void shuttingDown();
 
 protected:
     bool eventFilter(QObject* obj, QEvent *event);

@@ -95,9 +95,18 @@ font: 14pt &quot;Courier New&quot;;</string>
     </property>
     <addaction name="actionFonts"/>
     <addaction name="actionSpeedwalk"/>
+    <addaction name="actionCmdStacking"/>
+    <addaction name="actionAliases"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFont"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionConnect">
@@ -140,6 +149,27 @@ font: 14pt &quot;Courier New&quot;;</string>
    </property>
    <property name="text">
     <string>Speedwalk</string>
+   </property>
+  </action>
+  <action name="actionCmdStacking">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>CmdStacking</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionAliases">
+   <property name="text">
+    <string>Aliases</string>
    </property>
   </action>
  </widget>
