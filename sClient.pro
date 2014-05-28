@@ -14,11 +14,13 @@ TEMPLATE = app
 SOURCES += main.cpp\
         mainwindow.cpp \
     dlgconnect.cpp \
-    dlgaliases.cpp
+    dlgaliases.cpp \
+    util.cpp
 
 HEADERS  += mainwindow.h \
     dlgconnect.h \
-    dlgaliases.h
+    dlgaliases.h \
+    util.h
 
 FORMS    += mainwindow.ui \
     dlgconnect.ui \

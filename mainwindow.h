@@ -49,7 +49,6 @@ private:
     QLabel *statusLabel;
     QTcpSocket *socket;
     bool isConnected;
-    QByteArray data;
     std::vector<QString> vHistory;
     size_t iHistoryPos;
     void showHistoryItem(size_t);
@@ -61,7 +60,9 @@ private:
     void LoadAliases(QSettings*);
     void SaveAliases(QSettings*);
     void ProcessInput(QString);
+    void PrintAliases();
 
+    void displayText(QByteArray data);
 
 public slots:
     void readInput();
@@ -72,7 +73,7 @@ public slots:
     void disconnected();
     void bytesWritten(qint64 bytes);
     void readyRead();
-    void displayText(QByteArray data);
+    //void displayText(QByteArray data);
     void shuttingDown();
 
 protected:

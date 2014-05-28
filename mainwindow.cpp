@@ -3,6 +3,7 @@
 #include "dlgaliases.h"
 
 #include "ui_mainwindow.h"
+#include "util.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent), iEnableKeepAlive(1), iMaxIdle(30),
@@ -23,16 +24,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionFonts, SIGNAL(triggered()), this, SLOT(loadFontsDialog()));
 
     socket = new QTcpSocket(this);
-    socket->setReadBufferSize(2048);
 
     fd = socket->socketDescriptor();
     setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &iEnableKeepAlive, sizeof(iEnableKeepAlive));
-
     setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &iMaxIdle, sizeof(iMaxIdle));
-
     // send up to 3 keepalive packets out, then disconnect if no response
     setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &iNumKeepAlives, sizeof(iNumKeepAlives));
-
     // send a keepalive packet out every 2 seconds (after the 5 second idle period)
     setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &iInterval, sizeof(iInterval));
 
@@ -66,27 +63,45 @@ void MainWindow::slotAliases()
 
 void MainWindow::ProcessInput(QString sInput)
 {
-    if ( (sInput.indexOf(".") != -1) && (sInput.indexOf(".") == 0) && (sInput.length() > 1) )
+    size_t aaFound, swFound, stackFound = 0;
+    size_t inputLength = 0;
+    QTextCursor prevCursor = ui->txtOutput->textCursor();
+
+    aaFound = sInput.toStdString().find("aa");
+    swFound = sInput.toStdString().find(".");
+    stackFound = sInput.toStdString().find(";");
+    inputLength = sInput.length();
+
+    if (swFound == 0 && inputLength > 1)
     {
-        if(ui->actionSpeedwalk->isChecked())
+        if (ui->actionSpeedwalk->isChecked())
         {
             qDebug() << "Speedwalk requested";
             doSpeedWalk(sInput);
         }
     }
-    else if ( (sInput.indexOf("aa ") != -1) && (sInput.indexOf("aa ") == 0) && (sInput.length() > 3) )
+    else if (aaFound == 0)
     {
-        qDebug() << "Looking to add an alias";
-        addToAliases(sInput);
+        /* adding alias */
+        if (inputLength > 3)
+        {
+            addToAliases(sInput);
+        }
+        else
+        {
+            PrintAliases();
+        }
     }
-    else if (sInput.indexOf(";") != -1)
+    else if (stackFound != std::string::npos)
     {
+        qDebug() << "Stacked command found";
         doStackedCommands(sInput);
     }
     else
     {
-        if(isConnected)
+        if (isConnected)
         {
+            ui->txtOutput->appendHtml("<span style=\"color:#ff0\">" + sInput + "</span><br style=\"color:#fff;\"/>");
             socket->write(sInput.toStdString().c_str());
             socket->write("\n");
         }
@@ -173,20 +188,17 @@ void MainWindow::disconnected()
 
 void MainWindow::bytesWritten(qint64 bytes)
 {
-    qDebug() << bytes << " bytes written...";
+    qDebug() << bytes << " bytes written to socket";
 }
 
 void MainWindow::readyRead()
 {
-    qDebug() << "Reading from Socket...";
-
     // read the data from the socket
     while(socket->bytesAvailable())
     {
-        qDebug() << "Length: " << socket->bytesAvailable();
-        //ui->txtOutput->append(socket->readAll());
-        data += QString::fromUtf8(socket->readAll());
-        emit displayText(data);
+        qDebug() << "Bytes to read: " << socket->bytesAvailable();
+        QByteArray data = socket->readAll();
+        displayText(data);
     }
 }
 
@@ -194,7 +206,7 @@ void MainWindow::loadFontsDialog()
 {
     bool ok = true;
     QFont font = QFontDialog::getFont(&ok, this);
-    if(!ok)
+    if (!ok)
     {
         return;
     }
@@ -203,7 +215,37 @@ void MainWindow::loadFontsDialog()
 
 void MainWindow::displayText(QByteArray data)
 {
-    ui->txtOutput->appendPlainText(data);
+    std::string ESC = "\x1B\x5B";
+    std::string TELNETIGNORE = "\xff\xfc";
+    std::string str = QString(data).toStdString();
+    size_t pos = str.find(ESC, 0);
+    size_t n = str.find(TELNETIGNORE, 0);
+    QString txt;
+    QTextCursor prevCursor = ui->txtOutput->textCursor();
+
+    txt = util::processANSI(str);
+
+    if (pos != std::string::npos)
+    {
+        // Ansi Escape Seq seen
+        qDebug() << "ASCII SEEN";
+        txt = util::processANSI(str);
+        //ui->txtOutput->appendHtml(txt);
+        ui->txtOutput->moveCursor(QTextCursor::End);
+        ui->txtOutput->textCursor().insertHtml(txt);
+        ui->txtOutput->setTextCursor(prevCursor);
+    }
+    else
+    {
+        qDebug() << "NO ESCAPE CODE SEEN";
+        txt = str.c_str();
+        ui->txtOutput->moveCursor(QTextCursor::End);
+        ui->txtOutput->insertPlainText(txt);
+        ui->txtOutput->setTextCursor(prevCursor);
+        //ui->txtOutput->appendPlainText(txt);
+    }
+
+    qDebug() << "str:" << txt;
     QTextCursor c = ui->txtOutput->textCursor();
     c.movePosition(QTextCursor::End);
     ui->txtOutput->setTextCursor(c);
@@ -218,14 +260,15 @@ void MainWindow::doSpeedWalk(QString sWalk)
     qDebug() << "Path requested: " << sWalk;
     int num;
     char dir;
-    if(isConnected) {
+    if (isConnected)
+    {
         while (iss >> num >> dir) {
             vRoute.push_back(std::make_pair(num, dir));
         }
-        for(vIt = vRoute.begin(); vIt != vRoute.end(); vIt++)
+        for (vIt = vRoute.begin(); vIt != vRoute.end(); vIt++)
         {
             qDebug() << "Walking " << vIt->first << " " << vIt->second;
-            for(int i = 0; i < vIt->first; i++)
+            for (int i = 0; i < vIt->first; i++)
             {
                 //qDebug() << vIt->second;
                 std::stringstream ss;
@@ -236,7 +279,6 @@ void MainWindow::doSpeedWalk(QString sWalk)
                 socket->write("\n");
             }
         }
-
     }
 }
 
@@ -250,14 +292,16 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
             if (keyEvent->key() == Qt::Key_Up)
             {
                 /* Check if there is history and show the command */
-                if (iHistoryPos < vHistory.size() && iHistoryPos < HISTORY_MAX_SIZE) {
+                if (iHistoryPos < vHistory.size() && iHistoryPos < HISTORY_MAX_SIZE)
+                {
                     showHistoryItem(iHistoryPos);
                     iHistoryPos++;
                 }
             }
             else if (keyEvent->key() == Qt::Key_Down)
             {
-                if (iHistoryPos > 0) {
+                if (iHistoryPos > 0)
+                {
                     showHistoryItem(iHistoryPos);
                     iHistoryPos--;
                 }
@@ -309,7 +353,7 @@ void MainWindow::doStackedCommands(QString sInput)
     }
     /* need to tack on last portion of the string */
     vStackedCmds.push_back(str);
-    for(vIt = vStackedCmds.begin(); vIt != vStackedCmds.end(); vIt++)
+    for (vIt = vStackedCmds.begin(); vIt != vStackedCmds.end(); vIt++)
     {
         //qDebug() << "Stacked Command " << vIt->c_str();
         socket->write((*vIt).c_str());
@@ -335,14 +379,14 @@ bool MainWindow::addToAliases(QString input)
     {
         mAliases.remove(alias);
         qDebug() << "Alias '" << alias << "' removed";
+        ui->txtOutput->appendPlainText("## Removed sClient Alias: " + alias);
     }
     else
     {
         mAliases.insert(alias, command.trimmed());
         qDebug() << "Alias '" << alias << "' added";
+        ui->txtOutput->appendPlainText("## Added sClient Alias: " + alias);
     }
-
-    qDebug() << mAliases;
 
     return b;
 }
@@ -388,12 +432,25 @@ void MainWindow::LoadAliases(QSettings *settings)
     QStringList keys = settings->childKeys();
 
     qDebug() << "Loading Aliases [" << keys.size() << "]...";
-    foreach(QString key, keys)
+    foreach (QString key, keys)
     {
         QString cmd = settings->value(key).toString();
         mAliases.insert(key, cmd);
     }
     settings->endGroup();
+}
+
+void MainWindow::PrintAliases()
+{
+    QMap<QString,QString>::const_iterator it = mAliases.begin();
+    ui->txtOutput->appendPlainText("\n  sClient Aliases \t| Command");
+    ui->txtOutput->appendHtml("<span style=\"color:#0f0\">+------------------------------------------------------------------+</span>");
+    while (it != mAliases.end())
+    {
+        ui->txtOutput->appendPlainText("| " + it.key() + " \t\t| " + it.value());
+        ++it;
+    }
+    ui->txtOutput->appendHtml("<span style=\"color:#0f0\">+------------------------------------------------------------------+</span>");
 }
 
 void MainWindow::shuttingDown()
