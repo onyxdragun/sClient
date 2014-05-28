@@ -215,37 +215,16 @@ void MainWindow::loadFontsDialog()
 
 void MainWindow::displayText(QByteArray data)
 {
-    std::string ESC = "\x1B\x5B";
-    std::string TELNETIGNORE = "\xff\xfc";
     std::string str = QString(data).toStdString();
-    size_t pos = str.find(ESC, 0);
-    size_t n = str.find(TELNETIGNORE, 0);
     QString txt;
     QTextCursor prevCursor = ui->txtOutput->textCursor();
 
     txt = util::processANSI(str);
+    ui->txtOutput->moveCursor(QTextCursor::End);
+    ui->txtOutput->textCursor().insertHtml(txt);
+    ui->txtOutput->moveCursor(QTextCursor::End);
+    //ui->txtOutput->setTextCursor(prevCursor);
 
-    if (pos != std::string::npos)
-    {
-        // Ansi Escape Seq seen
-        qDebug() << "ASCII SEEN";
-        txt = util::processANSI(str);
-        //ui->txtOutput->appendHtml(txt);
-        ui->txtOutput->moveCursor(QTextCursor::End);
-        ui->txtOutput->textCursor().insertHtml(txt);
-        ui->txtOutput->setTextCursor(prevCursor);
-    }
-    else
-    {
-        qDebug() << "NO ESCAPE CODE SEEN";
-        txt = str.c_str();
-        ui->txtOutput->moveCursor(QTextCursor::End);
-        ui->txtOutput->insertPlainText(txt);
-        ui->txtOutput->setTextCursor(prevCursor);
-        //ui->txtOutput->appendPlainText(txt);
-    }
-
-    qDebug() << "str:" << txt;
     QTextCursor c = ui->txtOutput->textCursor();
     c.movePosition(QTextCursor::End);
     ui->txtOutput->setTextCursor(c);

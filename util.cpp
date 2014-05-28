@@ -9,13 +9,16 @@ QString util::processANSI(std::string str)
     std::string END = "\x6D";
     std::string CRLF = "\x0D\x0A";
     QMap<int, QString> mHTMLColors;
-
+    QString tmp = str.c_str();
     size_t len = 0;
     size_t pos = 0;
     size_t end = 0;
-    size_t n = 0;
 
     int color = 0;
+
+    // Escape any HTML type characters
+    tmp = Qt::escape(tmp);
+    str = tmp.toStdString();
 
     mHTMLColors.insert(30, "#fff"); // Needs to be white as our background is black
     mHTMLColors.insert(31, "#f00");
@@ -49,16 +52,16 @@ QString util::processANSI(std::string str)
         end = str.find(END, pos);
     }
 
-    pos = str.find(CRLF, 0);
-
-    while (pos != std::string::npos)
-    {
-        str.replace(pos, CRLF.length(), "<br/>");
-        pos = str.find(CRLF, pos +1);
-    }
-
     // process all spaces
     str = replaceMultiSpaces(str);
+
+    // process any \n\r characters
+    pos = str.find(CRLF, 0);
+    while (pos != std::string::npos)
+    {
+        str.replace(pos, CRLF.length(), "<br />");
+        pos = str.find(CRLF, pos +1);
+    }
 
     return str.c_str();
 }
@@ -89,29 +92,6 @@ int util::getColorCode(std::string code)
         }
     }
     return color;
-}
-
-std::string util::encodeChars(std::string str)
-{
-    std::vector<std::string> symbols;
-    std::vector<std::string>::iterator it;
-    symbols.push_back("&");
-    symbols.push_back("<");
-    symbols.push_back(">");;
-
-    for (it = symbols.begin(); it != symbols.end(); ++it)
-    {
-        size_t pos = str.find(*it);
-        if (pos == std::string::npos)
-            continue;
-        int ascii = static_cast<int>(str[pos]);
-        std::ostringstream ss;
-        ss << "&" << ascii << ";";
-        std::string s = ss.str();
-        str.erase(pos, 1);
-        str.insert(pos, s);
-    }
-    return str;
 }
 
 std::string util::replaceMultiSpaces(std::string str) {

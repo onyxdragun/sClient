@@ -15,7 +15,6 @@ public:
 
     static QString processANSI(std::string);
     static int getColorCode(std::string);
-    static std::string encodeChars(std::string);
     static std::string replaceMultiSpaces(std::string);
 };
 
