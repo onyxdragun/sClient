@@ -115,11 +115,15 @@ void MainWindow::readInput()
 
     /* Add command to the beginging of the history */
     std::vector<QString>::iterator itHistory;
+    iHistoryPos = 0;
     itHistory = vHistory.begin();
     if (vHistory.size() >= HISTORY_MAX_SIZE) {
         vHistory.pop_back();
     }
-    vHistory.insert(itHistory, sInput);
+    if (sInput.compare(QString("")) != 0)
+    {
+        vHistory.insert(itHistory, sInput);
+    }
 
     found = sInput.toStdString().find(" ");
     if (found == std::string::npos)
@@ -131,7 +135,8 @@ void MainWindow::readInput()
             qDebug() << "Alias '" << i.key() << "' called";
             ProcessInput(i.value());
         }
-        else {
+        else
+        {
             ProcessInput(sInput);
         }
     }
@@ -223,7 +228,6 @@ void MainWindow::displayText(QByteArray data)
     ui->txtOutput->moveCursor(QTextCursor::End);
     ui->txtOutput->textCursor().insertHtml(txt);
     ui->txtOutput->moveCursor(QTextCursor::End);
-    //ui->txtOutput->setTextCursor(prevCursor);
 
     QTextCursor c = ui->txtOutput->textCursor();
     c.movePosition(QTextCursor::End);
@@ -271,18 +275,21 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
             if (keyEvent->key() == Qt::Key_Up)
             {
                 /* Check if there is history and show the command */
-                if (iHistoryPos < vHistory.size() && iHistoryPos < HISTORY_MAX_SIZE)
+                if (iHistoryPos <= vHistory.size() && iHistoryPos <= HISTORY_MAX_SIZE)
                 {
                     showHistoryItem(iHistoryPos);
-                    iHistoryPos++;
+                    if ( (iHistoryPos+1) != vHistory.size())
+                    {
+                        iHistoryPos++;
+                    }
                 }
             }
             else if (keyEvent->key() == Qt::Key_Down)
             {
                 if (iHistoryPos > 0)
                 {
-                    showHistoryItem(iHistoryPos);
                     iHistoryPos--;
+                    showHistoryItem(iHistoryPos);
                 }
                 else if (iHistoryPos == 0)
                 {
