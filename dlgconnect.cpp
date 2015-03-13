@@ -20,9 +20,7 @@ void dlgConnect::doConnect()
 {
     mainWindow->setHost(ui->txtServerAddr->text());
     mainWindow->setPort(ui->txtPort->text().toInt());
-    mainWindow->setStatusBar();
     qDebug() << "Attempting server connection...";
     mainWindow->doConnection();
     this->close();
-
 }

@@ -11,6 +11,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->txtInput->installEventFilter(this);
+    ui->txtOutput->installEventFilter(this);
+
     iNumKeepAlives = 2;
     iInterval = 2;
     iHistoryPos = 0;
@@ -101,7 +103,9 @@ void MainWindow::ProcessInput(QString sInput)
     {
         if (isConnected)
         {
-            ui->txtOutput->appendHtml("<span style=\"color:#ff0\">" + sInput + "</span><br style=\"color:#fff;\"/>");
+            ui->txtOutput->moveCursor(QTextCursor::End);
+            ui->txtOutput->textCursor().insertHtml("<span style=\"color:#ff0\">" + sInput + "</span><br style=\"color:#fff;\"/>");
+            ui->txtOutput->moveCursor(QTextCursor::End);
             socket->write(sInput.toStdString().c_str());
             socket->write("\n");
         }
@@ -132,7 +136,7 @@ void MainWindow::readInput()
         /* Check if it was an alias that was entered */
         if (i != mAliases.end())
         {
-            qDebug() << "Alias '" << i.key() << "' called";
+            qDebug() << "Alias \"" << i.key() << "\" called";
             ProcessInput(i.value());
         }
         else
@@ -154,13 +158,6 @@ void MainWindow::setHost(QString sHost)
 void MainWindow::setPort(int iPort)
 {
     this->iHostPort = iPort;
-}
-
-void MainWindow::setStatusBar()
-{
-    QString sStatus = "Server: "+ this->sHostAddress +" Port: "+ QString::number(this->iHostPort);
-    statusLabel->setText(sStatus);
-    ui->statusBar->addWidget(statusLabel);
 }
 
 void MainWindow::doConnection()
@@ -193,7 +190,7 @@ void MainWindow::disconnected()
 
 void MainWindow::bytesWritten(qint64 bytes)
 {
-    qDebug() << bytes << " bytes written to socket";
+    qDebug() << "Bytes written: " << bytes;
 }
 
 void MainWindow::readyRead()
@@ -222,7 +219,7 @@ void MainWindow::displayText(QByteArray data)
 {
     std::string str = QString(data).toStdString();
     QString txt;
-    QTextCursor prevCursor = ui->txtOutput->textCursor();
+    //QTextCursor prevCursor = ui->txtOutput->textCursor();
 
     txt = util::processANSI(str);
     ui->txtOutput->moveCursor(QTextCursor::End);
@@ -272,32 +269,51 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
         if (event->type() == QEvent::KeyPress)
         {
             QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-            if (keyEvent->key() == Qt::Key_Up)
+            switch (keyEvent->key())
             {
-                /* Check if there is history and show the command */
-                if (iHistoryPos <= vHistory.size() && iHistoryPos <= HISTORY_MAX_SIZE)
-                {
-                    showHistoryItem(iHistoryPos);
-                    if ( (iHistoryPos+1) != vHistory.size())
+                case Qt::Key_Up:
+                    /* Check if there is history and show the command */
+                    if (iHistoryPos <= vHistory.size() && iHistoryPos <= HISTORY_MAX_SIZE)
                     {
-                        iHistoryPos++;
+                        showHistoryItem(iHistoryPos);
+                        if ( (iHistoryPos+1) != vHistory.size())
+                        {
+                            iHistoryPos++;
+                        }
                     }
-                }
-            }
-            else if (keyEvent->key() == Qt::Key_Down)
-            {
-                if (iHistoryPos > 0)
-                {
-                    iHistoryPos--;
-                    showHistoryItem(iHistoryPos);
-                }
-                else if (iHistoryPos == 0)
-                {
-                    showHistoryItem(iHistoryPos);
-                }
+                    break;
+                case Qt::Key_Down:
+                    if (iHistoryPos > 0)
+                    {
+                        iHistoryPos--;
+                        showHistoryItem(iHistoryPos);
+                    }
+                    else if (iHistoryPos == 0)
+                    {
+                        showHistoryItem(iHistoryPos);
+                    }
+
+                    break;
+                default:
+                    keyEvent->ignore();
+                    break;
             }
         }
     }
+    else if (obj == ui->txtOutput)
+    {
+        /* We want to ensure that the txtInput receives the user input
+         * and not the txtOutput.
+         */
+        if (event->type() == QEvent::KeyPress)
+        {
+            QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+            ui->txtInput->insert(keyEvent->text());
+            ui->txtInput->setFocus();
+            return true;
+        }
+    }
+
     return QMainWindow::eventFilter(obj, event);
 }
 
@@ -436,7 +452,7 @@ void MainWindow::PrintAliases()
         ui->txtOutput->appendPlainText("| " + it.key() + " \t\t| " + it.value());
         ++it;
     }
-    ui->txtOutput->appendHtml("<span style=\"color:#0f0\">+------------------------------------------------------------------+</span>");
+    ui->txtOutput->appendHtml("<span style=\"color:#0f0\">+------------------------------------------------------------------+</span><br />");
 }
 
 void MainWindow::shuttingDown()

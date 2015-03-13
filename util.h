@@ -13,9 +13,10 @@ class util {
 
 public:
 
-    static QString processANSI(std::string);
-    static int getColorCode(std::string);
-    static std::string replaceMultiSpaces(std::string);
+    static QString processANSI(std::string&);
+    static int getColorCode(std::string&);
+    static std::string replaceMultiSpaces(std::string&);
+    static std::string replaceTelnetCodes(std::string&);
 };
 
 #endif // UTIL_H

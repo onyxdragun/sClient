@@ -17,6 +17,7 @@
 #include <QMap>
 #include <QSettings>
 
+
 #define HISTORY_MAX_SIZE 50
 
 namespace Ui {
@@ -32,7 +33,6 @@ public:
     ~MainWindow();
     void setHost(QString sHost);
     void setPort(int iPort);
-    void setStatusBar();
     void doConnection();
     void doSpeedWalk(QString sWalk);
     void doStackedCommands(QString sInput);

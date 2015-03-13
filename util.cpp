@@ -3,7 +3,7 @@
 #include <QDebug>
 
 
-QString util::processANSI(std::string str)
+QString util::processANSI(std::string &str)
 {
     std::string ESC = "\x1B\x5B";
     std::string END = "\x6D";
@@ -62,12 +62,13 @@ QString util::processANSI(std::string str)
         str.replace(pos, CRLF.length(), "<br />");
         pos = str.find(CRLF, pos +1);
     }
+    // process all telnet codes
+    str = replaceTelnetCodes(str);
 
     return str.c_str();
 }
 
-
-int util::getColorCode(std::string code)
+int util::getColorCode(std::string &code)
 {
     std::string SEMICOLON = "\x3B";
     std::string ESC = "\x5B";
@@ -94,7 +95,8 @@ int util::getColorCode(std::string code)
     return color;
 }
 
-std::string util::replaceMultiSpaces(std::string str) {
+std::string util::replaceMultiSpaces(std::string &str)
+{
     std::string twoNBSP = "&nbsp;&nbsp;";
     std::string NBSP = "&nbsp;";
     std::string MultiSpace = "\x20\x20";
@@ -112,6 +114,30 @@ std::string util::replaceMultiSpaces(std::string str) {
     {
         str.replace(pos, NBSPspace.length(), twoNBSP);
         pos = str.find(NBSPspace, pos+1);
+    }
+
+    return str;
+}
+
+std::string util::replaceTelnetCodes(std::string &str)
+{
+    std::vector<std::string>escapeCodes;
+    escapeCodes.push_back("\x0D\x0A\x1B");
+    escapeCodes.push_back("\xFF\xFB\x01");
+    escapeCodes.push_back("\x1F\x1F\x1F");
+    escapeCodes.push_back("\xFF\xFC\x01");
+    escapeCodes.push_back("\xFF\xFC\x03");
+    std::vector<std::string>::iterator It;
+    size_t pos = 0;
+
+    for (It = escapeCodes.begin(); It != escapeCodes.end(); ++It)
+    {
+        pos = str.find(*It, 0);
+        while (pos != std::string::npos)
+        {
+            str.replace(pos, (*It).length(), "");
+            pos = str.find(*It, pos + 1);
+        }
     }
 
     return str;

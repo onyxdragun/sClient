@@ -108,7 +108,6 @@ font: 14pt &quot;Courier New&quot;;</string>
    <addaction name="menuFont"/>
    <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionConnect">
    <property name="text">
     <string>Connect</string>
