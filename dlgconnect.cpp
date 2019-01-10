@@ -16,6 +16,9 @@ dlgConnect::~dlgConnect()
     delete ui;
 }
 
+// doConnect()
+//
+// Read values entered by user and store them in MainWindow for usage
 void dlgConnect::doConnect()
 {
     mainWindow->setHost(ui->txtServerAddr->text());

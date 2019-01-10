@@ -63,6 +63,12 @@ void MainWindow::slotAliases()
     dAliases->show();
 }
 
+// ProcessInput()
+//
+// QString [IN] - Read incoming string from user
+//
+// Based on what the user inputs, we will choose an action
+
 void MainWindow::ProcessInput(QString sInput)
 {
     size_t aaFound, swFound, stackFound = 0;
@@ -74,6 +80,7 @@ void MainWindow::ProcessInput(QString sInput)
     stackFound = sInput.toStdString().find(";");
     inputLength = sInput.length();
 
+    // Speedwalk command issued
     if (swFound == 0 && inputLength > 1)
     {
         if (ui->actionSpeedwalk->isChecked())
@@ -82,9 +89,9 @@ void MainWindow::ProcessInput(QString sInput)
             doSpeedWalk(sInput);
         }
     }
+    // User wishes to create an alias
     else if (aaFound == 0)
     {
-        /* adding alias */
         if (inputLength > 3)
         {
             addToAliases(sInput);
@@ -94,6 +101,7 @@ void MainWindow::ProcessInput(QString sInput)
             PrintAliases();
         }
     }
+    // User is stacking commands
     else if (stackFound != std::string::npos)
     {
         qDebug() << "Stacked command found";
@@ -112,12 +120,15 @@ void MainWindow::ProcessInput(QString sInput)
     }
 }
 
+// readInput()
+//
+// Read in what the user is typing into the textbox
 void MainWindow::readInput()
 {
     QString sInput = ui->txtInput->text();
     size_t found = 0;
 
-    /* Add command to the beginging of the history */
+    // Add command to the beginging of the history
     std::vector<QString>::iterator itHistory;
     iHistoryPos = 0;
     itHistory = vHistory.begin();
@@ -133,7 +144,7 @@ void MainWindow::readInput()
     if (found == std::string::npos)
     {
         QMap<QString,QString>::const_iterator i = mAliases.find(sInput);
-        /* Check if it was an alias that was entered */
+        // Check if it was an alias that was entered 
         if (i != mAliases.end())
         {
             qDebug() << "Alias \"" << i.key() << "\" called";
@@ -150,16 +161,25 @@ void MainWindow::readInput()
     ui->txtInput->clear();
 }
 
+// setHost()
+//
+// QString [IN] - Set the IP of the server to connect to
 void MainWindow::setHost(QString sHost)
 {
     this->sHostAddress = sHost;
 }
 
+// setPort()
+//
+// QString [IN] - Set the port number of the server to connect to
 void MainWindow::setPort(int iPort)
 {
     this->iHostPort = iPort;
 }
 
+// doConnection()
+//
+// Attempt to connect to remote server using sHostAddress and iHostPost
 void MainWindow::doConnection()
 {
     ui->txtOutput->appendPlainText("Connecting to Server...");
@@ -171,6 +191,10 @@ void MainWindow::doConnection()
     }
 }
 
+// connected()
+// 
+// If connected set a flag that can be checked later
+// Certain actions can only be done when connected
 void MainWindow::connected()
 {
     QString sStatus = this->sHostAddress +" "+ QString::number(this->iHostPort);
@@ -179,6 +203,10 @@ void MainWindow::connected()
     this->setWindowTitle(sStatus);
 }
 
+// disconnected()
+//
+// Inform user if they have been disconnected from remote server
+// Certain actions cannot be done if disconnected
 void MainWindow::disconnected()
 {
     ui->txtOutput->appendPlainText("Disconnected from Server");
@@ -188,11 +216,18 @@ void MainWindow::disconnected()
     statusLabel->clear();
 }
 
+// bytesWritten()
+//
+// Debug - Check to see if bytes have been written to socket
 void MainWindow::bytesWritten(qint64 bytes)
 {
     qDebug() << "Bytes written: " << bytes;
 }
 
+// readyRead()
+//
+// Check the open socket and read from it
+// Store all data into a QByteArray to process
 void MainWindow::readyRead()
 {
     // read the data from the socket
@@ -204,6 +239,9 @@ void MainWindow::readyRead()
     }
 }
 
+// loadFontsDialog()
+// 
+// All user to change Font preferences
 void MainWindow::loadFontsDialog()
 {
     bool ok = true;
@@ -215,6 +253,12 @@ void MainWindow::loadFontsDialog()
     ui->txtOutput->setFont(font);
 }
 
+// displayText()
+//
+// QByteArray [IN] - Data read from socket
+//
+// Read the data that was received from the socket (remote server)
+// Process it as needed and display to user
 void MainWindow::displayText(QByteArray data)
 {
     std::string str = QString(data).toStdString();
@@ -231,6 +275,12 @@ void MainWindow::displayText(QByteArray data)
     ui->txtOutput->setTextCursor(c);
 }
 
+// doSpeedWalk()
+//
+// QString [IN] - Speed walk directions
+//
+// Iterate through the string and pull out compass directions
+// so that user can move multiple times with one command
 void MainWindow::doSpeedWalk(QString sWalk)
 {
     sWalk = sWalk.mid(1);
@@ -262,6 +312,10 @@ void MainWindow::doSpeedWalk(QString sWalk)
     }
 }
 
+// eventFilter()
+//
+// QObject [IN] - UI Object that triggered the event
+// QEvent  [IN] - What event was triggered
 bool MainWindow::eventFilter(QObject* obj, QEvent *event)
 {
     if (obj == ui->txtInput)
@@ -269,10 +323,11 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
         if (event->type() == QEvent::KeyPress)
         {
             QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+            // Certain keyboard keys were issued
             switch (keyEvent->key())
             {
                 case Qt::Key_Up:
-                    /* Check if there is history and show the command */
+                    // Check if there is history and show the command
                     if (iHistoryPos <= vHistory.size() && iHistoryPos <= HISTORY_MAX_SIZE)
                     {
                         showHistoryItem(iHistoryPos);
@@ -283,6 +338,7 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
                     }
                     break;
                 case Qt::Key_Down:
+                    // Iterate through history backwards
                     if (iHistoryPos > 0)
                     {
                         iHistoryPos--;
@@ -295,6 +351,7 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
 
                     break;
                 default:
+                    // Key strokes we do not care about
                     keyEvent->ignore();
                     break;
             }
@@ -302,9 +359,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
     }
     else if (obj == ui->txtOutput)
     {
-        /* We want to ensure that the txtInput receives the user input
-         * and not the txtOutput.
-         */
+        // We want to ensure that the txtInput receives the user input
+        // and not the txtOutput.
         if (event->type() == QEvent::KeyPress)
         {
             QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
@@ -317,6 +373,9 @@ bool MainWindow::eventFilter(QObject* obj, QEvent *event)
     return QMainWindow::eventFilter(obj, event);
 }
 
+// showHistoryItem()
+//
+// size_t [IN] - Index of item to display to user from Command History
 void MainWindow::showHistoryItem(size_t pos)
 {
     if (pos >= 0 && pos < vHistory.size())
@@ -326,6 +385,12 @@ void MainWindow::showHistoryItem(size_t pos)
     }
 }
 
+// doStackedCommands()
+//
+// QString [IN] - User input
+//
+// Iterate through user input and break up commands which are between
+// ';' characters.
 void MainWindow::doStackedCommands(QString sInput)
 {
     std::vector<std::string> vStackedCmds;
@@ -346,14 +411,14 @@ void MainWindow::doStackedCommands(QString sInput)
 
     qDebug() << "Stacking Commands: " << sInput;
 
-    /* We need to split the string which is ; delimited */
+    // We need to split the string which is ; delimited 
     while ((pos = str.find(delimiter)) != std::string::npos)
     {
         token = str.substr(0, pos);
         vStackedCmds.push_back(token);
         str.erase(0, pos + delimiter.length());
     }
-    /* need to tack on last portion of the string */
+    // need to tack on last portion of the string 
     vStackedCmds.push_back(str);
     for (vIt = vStackedCmds.begin(); vIt != vStackedCmds.end(); vIt++)
     {
@@ -364,6 +429,13 @@ void MainWindow::doStackedCommands(QString sInput)
 
 }
 
+// addToAliases()
+//
+// QString [IN] - String from user input
+//
+// User wishes to create alias. Aliases can do multiple
+// actions with user only entering one word
+//
 bool MainWindow::addToAliases(QString input)
 {
     bool b = true;
@@ -379,6 +451,7 @@ bool MainWindow::addToAliases(QString input)
 
     if (command.compare("\n") && (command.length() == 0))
     {
+        // User wishes to remove alias (no action specified)
         mAliases.remove(alias);
         qDebug() << "Alias '" << alias << "' removed";
         ui->txtOutput->appendPlainText("## Removed sClient Alias: " + alias);
@@ -393,18 +466,33 @@ bool MainWindow::addToAliases(QString input)
     return b;
 }
 
+// SaveSettings()
+//
+// Save Program settings for later retrieval
+// Currently Supported items:
+//    Aliases
 void MainWindow::SaveSettings()
 {
     QSettings settings("DynamicShark", "sClient");
     SaveAliases(&settings);
 }
 
+// LoadSettings()
+//
+// Load Program settings for later retrieval
+// Currently Supported items:
+//    Aliases
 void MainWindow::LoadSettings()
 {
     QSettings settings("DynamicShark", "sClient");
     LoadAliases(&settings);
 }
 
+// SaveAliases()
+//
+// QString [IN] - Program settings
+//
+// Save user Aliases into storage
 void MainWindow::SaveAliases(QSettings *settings)
 {
     QMap<QString,QString>::iterator It = mAliases.begin();
@@ -428,6 +516,11 @@ void MainWindow::SaveAliases(QSettings *settings)
     qDebug() << "Finished saving Aliases";
 }
 
+// LoadAliases()
+//
+// QString [IN] - Program settings
+//
+// Retrieve user Aliases from storage
 void MainWindow::LoadAliases(QSettings *settings)
 {
     settings->beginGroup("Aliases");
@@ -442,6 +535,9 @@ void MainWindow::LoadAliases(QSettings *settings)
     settings->endGroup();
 }
 
+// PrintAliases()
+//
+// Display the user Aliases that have been created
 void MainWindow::PrintAliases()
 {
     QMap<QString,QString>::const_iterator it = mAliases.begin();

@@ -2,7 +2,13 @@
 #include <QString>
 #include <QDebug>
 
-
+// processANSI()
+//
+// string  - [IN]  Incoming message from server
+// QString - [OUT] Formated with ANSI codes
+//
+// Convert any present ANSI colour codes so they are converted 
+// into HTML and displayed in the text area
 QString util::processANSI(std::string &str)
 {
     std::string ESC = "\x1B\x5B";
@@ -28,7 +34,7 @@ QString util::processANSI(std::string &str)
     mHTMLColors.insert(35, "#f0f");
     mHTMLColors.insert(36, "#0ff");
 
-    /* Let's get all the colors dealt with */
+    // Let's get all the colors dealt with
     pos = str.find(ESC, 0);
     end = str.find(END, pos);
 
@@ -68,6 +74,11 @@ QString util::processANSI(std::string &str)
     return str.c_str();
 }
 
+// getColorCode()
+//
+// string - [IN]   Isolate the ANSI colour code
+// int    - [OUT] 
+//
 int util::getColorCode(std::string &code)
 {
     std::string SEMICOLON = "\x3B";
@@ -95,6 +106,13 @@ int util::getColorCode(std::string &code)
     return color;
 }
 
+// replaceMultiSpaces()
+//
+// string [IN]  - String to parse
+// string [OUT] - String modified without multie whitespace
+//
+// Sometimes there are double spaces coming from the server
+// We need to remove the extra whitespace or formating is messed up
 std::string util::replaceMultiSpaces(std::string &str)
 {
     std::string twoNBSP = "&nbsp;&nbsp;";
@@ -119,6 +137,13 @@ std::string util::replaceMultiSpaces(std::string &str)
     return str;
 }
 
+// replaceTelnetCodes()
+//
+// string [IN]  - Incoming text from server
+// string [OUT] - Formatted text with telnet codes removed
+//
+// Telnet codes can play havoc with the display, we we will iterate
+// over them and return a cleaner string
 std::string util::replaceTelnetCodes(std::string &str)
 {
     std::vector<std::string>escapeCodes;
