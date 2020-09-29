@@ -7,6 +7,42 @@
 // string  - [IN]  Incoming message from server
 // QString - [OUT] Formated with ANSI codes
 //
+// Convert any present ANSI colour codes so they are converted
+// into HTML and displayed in the text area
+QString util::highlightStr(std::string &str, highlightTypes type)
+{
+    std::string format;
+
+    if (type == highlightTypes::TELL)
+    {
+        format = "<span style=\"color: #db4c2e;\">";
+    }
+    else if (type == highlightTypes::SHOUT)
+    {
+        format = "<span style=\"font-weight:bold;\">";
+    }
+
+    size_t startPos = str.find_first_of("\r\n");
+
+    if (startPos == std::string::npos)
+    {
+        startPos = 0;
+    }
+    str.insert(startPos, format);
+
+    size_t endPos = str.find_last_of("\r\n");
+    if (endPos == std::string::npos)
+    {
+        endPos = str.length();
+    }
+    str.insert(endPos, "</span>");
+    return str.c_str();
+}
+// processANSI()
+//
+// string  - [IN]  Incoming message from server
+// QString - [OUT] Formated with ANSI codes
+//
 // Convert any present ANSI colour codes so they are converted 
 // into HTML and displayed in the text area
 QString util::processANSI(std::string &str)
@@ -23,7 +59,7 @@ QString util::processANSI(std::string &str)
     int color = 0;
 
     // Escape any HTML type characters
-    tmp = Qt::escape(tmp);
+    tmp = tmp.toHtmlEscaped();
     str = tmp.toStdString();
 
     mHTMLColors.insert(30, "#fff"); // Needs to be white as our background is black
@@ -152,6 +188,7 @@ std::string util::replaceTelnetCodes(std::string &str)
     escapeCodes.push_back("\x1F\x1F\x1F");
     escapeCodes.push_back("\xFF\xFC\x01");
     escapeCodes.push_back("\xFF\xFC\x03");
+    escapeCodes.push_back("\xEF\xBF\xBD");   // Replacement Character
     std::vector<std::string>::iterator It;
     size_t pos = 0;
 

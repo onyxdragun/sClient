@@ -5,14 +5,16 @@
 #-------------------------------------------------
 
 QT       += core gui
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 QT       += network
 
 TARGET = sClient
 TEMPLATE = app
 
+CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
+    mainwindow.cpp \
     dlgconnect.cpp \
     dlgaliases.cpp \
     util.cpp

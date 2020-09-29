@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "mainwindow.h"
 #include "dlgconnect.h"
 #include "dlgaliases.h"
@@ -75,9 +77,12 @@ void MainWindow::ProcessInput(QString sInput)
     size_t inputLength = 0;
     QTextCursor prevCursor = ui->txtOutput->textCursor();
 
+    qDebug() << sInput;
+
     aaFound = sInput.toStdString().find("aa");
     swFound = sInput.toStdString().find(".");
     stackFound = sInput.toStdString().find(";");
+
     inputLength = sInput.length();
 
     // Speedwalk command issued
@@ -261,15 +266,35 @@ void MainWindow::loadFontsDialog()
 // Process it as needed and display to user
 void MainWindow::displayText(QByteArray data)
 {
+    size_t tellFound = 0, shoutFound = 0;
     std::string str = QString(data).toStdString();
     QString txt;
     //QTextCursor prevCursor = ui->txtOutput->textCursor();
 
+    tellFound = str.find(" tells you: ");
+    shoutFound = str.find(" shouts: ");
+
+    // ANSI colour codes could be present
     txt = util::processANSI(str);
+
+    if (tellFound != std::string::npos)
+    {
+        // Shout or Tell was seen
+        // Need to colour text to highlight as needed
+        qDebug () << QString(data);
+        txt = util::highlightStr(str, util::highlightTypes::TELL);
+    }
+    if (shoutFound != std::string::npos)
+    {
+        // Shout or Tell was seen
+        // Need to colour text to highlight as needed
+        qDebug () << QString(data);
+        txt = util::highlightStr(str, util::highlightTypes::SHOUT);
+    }
+
     ui->txtOutput->moveCursor(QTextCursor::End);
     ui->txtOutput->textCursor().insertHtml(txt);
     ui->txtOutput->moveCursor(QTextCursor::End);
-
     QTextCursor c = ui->txtOutput->textCursor();
     c.movePosition(QTextCursor::End);
     ui->txtOutput->setTextCursor(c);
@@ -283,19 +308,32 @@ void MainWindow::displayText(QByteArray data)
 // so that user can move multiple times with one command
 void MainWindow::doSpeedWalk(QString sWalk)
 {
-    sWalk = sWalk.mid(1);
-    std::istringstream iss(sWalk.toStdString());
+    std::string speedWalk = sWalk.mid(1).toStdString(); // remove leading .
     std::vector<std::pair<int, char> > vRoute;
     std::vector<std::pair<int, char> >::iterator vIt;
-    qDebug() << "Path requested: " << sWalk;
-    int num;
-    char dir;
+    std::stringstream ss;
+    int num = 1;
+
+    qDebug() << "A walking path has been requested: " << sWalk;
     if (isConnected)
     {
-        while (iss >> num >> dir) {
-            vRoute.push_back(std::make_pair(num, dir));
+        for (char const &c: speedWalk)
+        {
+            if (std::isdigit(c))
+            {
+                ss << c;
+            }
+            else
+            {
+                // Map the direction: 12 n, 9 e, 1 s
+                std::istringstream(ss.str()) >> num;
+                vRoute.push_back(std::make_pair(num, c));
+                ss.clear();
+                ss.str(std::string());
+                num = 1;
+            }
         }
-        for (vIt = vRoute.begin(); vIt != vRoute.end(); vIt++)
+        for (vIt = vRoute.begin(); vIt != vRoute.end(); ++vIt)
         {
             qDebug() << "Walking " << vIt->first << " " << vIt->second;
             for (int i = 0; i < vIt->first; i++)

@@ -1,13 +1,13 @@
-#include <QtGui/QApplication>
+#include <QtWidgets/QApplication>
 #include "mainwindow.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
+    QApplication app(argc, argv);
+    MainWindow window;
 
-    QObject::connect(&a, SIGNAL(aboutToQuit()), &w, SLOT(shuttingDown()));
-    w.show();
+    QObject::connect(&app, SIGNAL(aboutToQuit()), &window, SLOT(shuttingDown()));
+    window.show();
     
-    return a.exec();
+    return app.exec();
 }
